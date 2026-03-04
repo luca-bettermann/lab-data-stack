@@ -1,0 +1,23 @@
+# ============================================================
+# Lab Data Stack — .gitignore
+# ============================================================
+
+# Environment file — contains passwords and secret keys.
+# NEVER commit this. Use .env.example as the template.
+.env
+
+# Editor / IDE files
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Python cache (from superset config development)
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Docker volumes (if ever mounted locally instead of named volumes)
+data/
+volumes/

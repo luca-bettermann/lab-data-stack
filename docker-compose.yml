@@ -1,0 +1,146 @@
+# ============================================================
+# Lab Data Stack — docker-compose.yml
+# ============================================================
+# Services:
+#   postgres  → Central PostgreSQL database (internal only)
+#   nocodb    → No-code data entry UI       → http://localhost:8080
+#   superset  → Data visualization          → http://localhost:8088
+#
+# Before starting:
+#   1. cp .env.example .env
+#   2. Edit .env with your passwords and secret keys
+#   3. docker compose up -d
+#
+# Requires: Docker Desktop with Docker Compose V2
+#   Check: docker compose version  (should be 2.x)
+# ============================================================
+
+services:
+
+  # ──────────────────────────────────────────────────────────
+  # PostgreSQL 15 — Central relational database
+  #
+  # Not exposed to the host machine — only reachable by other
+  # containers on lab_network via hostname "postgres".
+  # Data is stored in the named volume "lab_postgres_data".
+  # The init script creates the nocodb and superset databases
+  # automatically on first launch.
+  # ──────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: lab_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # This SQL file runs once on first container start:
+      - ./init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    networks:
+      - lab_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-labuser}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  # ──────────────────────────────────────────────────────────
+  # NocoDB — No-code database UI for data entry & management
+  #
+  # Uses PostgreSQL as its backend (not SQLite).
+  # File uploads and attachments are stored in nc_data volume.
+  # Web UI: http://localhost:8080
+  # ──────────────────────────────────────────────────────────
+  nocodb:
+    image: nocodb/nocodb:latest
+    container_name: lab_nocodb
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      # Connection string: pg://host:port?u=user&p=pass&d=database
+      NC_DB: "pg://postgres:5432?u=${POSTGRES_USER}&p=${POSTGRES_PASSWORD}&d=nocodb"
+      NC_AUTH_JWT_SECRET: ${NOCODB_JWT_SECRET}
+    volumes:
+      - nc_data:/usr/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - lab_network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/v1/health 2>/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ──────────────────────────────────────────────────────────
+  # Apache Superset — Data visualization & dashboards
+  #
+  # On first start, the init.sh script automatically:
+  #   1. Runs database migrations  (superset db upgrade)
+  #   2. Creates the admin user    (superset fab create-admin)
+  #   3. Initialises roles         (superset init)
+  #   4. Starts the web server     (gunicorn)
+  #
+  # Subsequent restarts skip steps 1-3 quickly (idempotent).
+  # Web UI: http://localhost:8088
+  # ──────────────────────────────────────────────────────────
+  superset:
+    build:
+      context: .
+      dockerfile: superset/Dockerfile
+    container_name: lab_superset
+    restart: unless-stopped
+    ports:
+      - "8088:8088"
+    environment:
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY}
+      # Superset stores its own metadata in the 'superset' database:
+      DATABASE_URL: "postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/superset"
+      # Admin credentials — used by init.sh on first run:
+      ADMIN_USERNAME: ${SUPERSET_ADMIN_USER}
+      ADMIN_EMAIL: ${SUPERSET_ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${SUPERSET_ADMIN_PASSWORD}
+    volumes:
+      - superset_home:/app/superset_home
+      - ./superset/superset_config.py:/app/pythonpath/superset_config.py:ro
+      - ./superset/init.sh:/app/docker/init.sh:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - lab_network
+    # Override the image entrypoint so our init.sh runs directly:
+    entrypoint: ["/bin/bash", "/app/docker/init.sh"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8088/health 2>/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+
+
+# ============================================================
+# Named volumes — data persists across container restarts
+# ============================================================
+volumes:
+  postgres_data:
+    name: lab_postgres_data
+  nc_data:
+    name: lab_nocodb_data
+  superset_home:
+    name: lab_superset_home
+
+
+# ============================================================
+# Dedicated Docker network — all containers communicate here
+# ============================================================
+networks:
+  lab_network:
+    name: lab_network
+    driver: bridge
