@@ -24,6 +24,24 @@ PostgreSQL + NocoDB + Superset, self-hosted via Docker Compose.
 
 ## Setup
 
+### Quickstart (recommended)
+
+```bash
+chmod +x setup.sh
+./setup.sh
+```
+
+`setup.sh` does the following on first run:
+- Generates a `.env` file with secure random secrets (`openssl rand -hex`)
+- Prints the generated Postgres password and Superset admin password to the terminal — **save these**
+- Runs `docker compose up -d`
+
+On subsequent runs it skips `.env` generation (existing file is preserved) and just starts the stack.
+
+> **Note:** `setup.sh` does not set `chmod 600 .env`. Run `chmod 600 .env` manually if this matters for your environment.
+
+### Manual setup
+
 ```bash
 cp .env.example .env
 chmod 600 .env
@@ -95,8 +113,7 @@ scp -r /path/to/lab-data-stack serveruser@192.168.1.50:~/lab-data-stack
 curl -fsSL https://get.docker.com | sh
 sudo usermod -aG docker $USER   # log out and back in
 cd ~/lab-data-stack
-cp .env.example .env && nano .env && chmod 600 .env
-docker compose up -d
+chmod +x setup.sh && ./setup.sh
 
 # Open firewall ports if needed
 sudo ufw allow 8080/tcp && sudo ufw allow 8088/tcp
@@ -141,8 +158,9 @@ docker system df                                     # volume disk usage
 ## File Structure
 
 ```
+setup.sh                  generates .env + runs docker compose up -d
 docker-compose.yml        main stack definition
-.env.example              template — copy to .env and fill in
+.env.example              template — copy to .env and fill in manually
 .gitignore
 init-db.sql               creates nocodb + superset databases (runs once on first start)
 superset/
