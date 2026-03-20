@@ -1,34 +1,33 @@
 #!/bin/bash
 
+GIST_SSH_URL="git@gist.github.com:101eb1b2d8d9d782a9458eb9d99d8dbf.git"
+
 if [ -f .env ]; then
-  echo "✅ .env file already exists, skipping generation."
+  echo "✅ .env file already exists, skipping fetch."
 else
-  echo "🔐 Generating new .env file..."
-  
-  POSTGRES_PASSWORD=$(openssl rand -hex 16)
-  NOCODB_JWT_SECRET=$(openssl rand -hex 32)
-  SUPERSET_SECRET_KEY=$(openssl rand -hex 32)
-  SUPERSET_ADMIN_PASSWORD=$(openssl rand -hex 8)
+  echo "🔐 Fetching .env from private gist..."
 
-  cat > .env << ENVEOF
-POSTGRES_USER=labuser
-POSTGRES_PASSWORD=$POSTGRES_PASSWORD
-NOCODB_JWT_SECRET=$NOCODB_JWT_SECRET
-SUPERSET_SECRET_KEY=$SUPERSET_SECRET_KEY
-SUPERSET_ADMIN_USER=admin
-SUPERSET_ADMIN_EMAIL=admin@lab.local
-SUPERSET_ADMIN_PASSWORD=$SUPERSET_ADMIN_PASSWORD
-ENVEOF
+  TEMP_DIR=$(mktemp -d)
 
-  echo ""
-  echo "================================"
-  echo "   Your credentials:"
-  echo "================================"
-  echo "  Postgres Password:  $POSTGRES_PASSWORD"
-  echo "  Superset User:      admin"
-  echo "  Superset Password:  $SUPERSET_ADMIN_PASSWORD"
-  echo "================================"
-  echo ""
+  if ! git clone "$GIST_SSH_URL" "$TEMP_DIR" 2>&1; then
+    rm -rf "$TEMP_DIR"
+    echo ""
+    echo "❌ Failed to clone private gist."
+    echo "   SSH access to GitHub is required."
+    echo "   Make sure your SSH key is added to your GitHub account and the ssh-agent is running."
+    echo "   Test with: ssh -T git@github.com"
+    exit 1
+  fi
+
+  if [ ! -f "$TEMP_DIR/.env" ]; then
+    rm -rf "$TEMP_DIR"
+    echo "❌ Gist cloned successfully but no .env file was found in it."
+    exit 1
+  fi
+
+  cp "$TEMP_DIR/.env" .env
+  rm -rf "$TEMP_DIR"
+  echo "✅ .env fetched from gist."
 fi
 
 echo "🛑 Stopping and removing existing containers..."
