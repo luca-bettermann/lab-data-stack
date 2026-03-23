@@ -142,9 +142,6 @@ scp you@yourlaptop:~/backup-YYYYMMDD-HHMM.sql .
 
 # 6. Restart so all services pick up the restored data
 docker compose restart
-
-# 7. Open firewall ports if needed
-sudo ufw allow 8080/tcp && sudo ufw allow 8088/tcp
 ```
 
 Access: `http://<server-ip>:8080` (NocoDB) and `http://<server-ip>:8088` (Superset).
@@ -199,6 +196,4 @@ superset/
   Dockerfile              extends apache/superset with psycopg2 (postgres driver)
   superset_config.py      Superset Python config (mounted into container)
   init.sh                 idempotent startup: db migrate + create admin + gunicorn
-docs/
-  how-to-guide.md         NocoDB and Superset usage reference
 ```
