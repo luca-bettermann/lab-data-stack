@@ -142,11 +142,12 @@ cd lab-data-stack
 nano .env          # paste and save
 chmod 600 .env
 
-# 4. Start the stack (initialises fresh databases)
-chmod +x setup.sh && ./setup.sh
-
-# 5. Copy the backup dump to the server and restore
+# 4. Copy the backup dump to the server
 scp you@yourlaptop:~/backup-YYYYMMDD-HHMM.sql .
+
+# 5. Start the stack and restore data
+chmod +x setup.sh restore.sh
+./setup.sh
 ./restore.sh backup-YYYYMMDD-HHMM.sql
 
 # 6. Restart so all services pick up the restored data
