@@ -12,6 +12,8 @@ if [ ! -f .env ]; then
   exit 1
 fi
 
+source .env
+
 echo "🛑 Stopping and removing existing containers..."
 docker compose down
 
@@ -19,5 +21,5 @@ echo "🚀 Starting stack..."
 docker compose up -d
 
 echo "✅ Done! Services available at:"
-echo "  NocoDB:   http://localhost:8080"
-echo "  Superset: http://localhost:8088"
+echo "  NocoDB:   http://localhost:${NOCODB_PORT:-8080}"
+echo "  Superset: http://localhost:${SUPERSET_PORT:-8088}"

@@ -15,7 +15,7 @@
 #   Check: docker compose version  (should be 2.x)
 # ============================================================
 
-name: lab-data-stack
+name: ${PROJECT_NAME:-lab-data-stack}
 services:
 
   # ──────────────────────────────────────────────────────────
@@ -39,6 +39,8 @@ services:
       - postgres_data:/var/lib/postgresql/data
       # This SQL file runs once on first container start:
       - ./init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
     networks:
       - lab_network
     healthcheck:
@@ -60,7 +62,7 @@ services:
     container_name: lab_nocodb
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "${NOCODB_PORT:-8080}:8080"
     environment:
       # Connection string: pg://host:port?u=user&p=pass&d=database
       NC_DB: "pg://postgres:5432?u=${POSTGRES_USER}&p=${POSTGRES_PASSWORD}&d=nocodb"
@@ -98,7 +100,7 @@ services:
     container_name: lab_superset
     restart: unless-stopped
     ports:
-      - "8088:8088"
+      - "${SUPERSET_PORT:-8088}:8088"
     environment:
       SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY}
       # Superset stores its own metadata in the 'superset' database:
