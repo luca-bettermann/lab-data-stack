@@ -152,6 +152,42 @@ Auto-restart on reboot is handled by `restart: unless-stopped` in `docker-compos
 
 ---
 
+## Windows
+
+The `.sh` scripts require bash and won't run in PowerShell or cmd directly.
+
+**Option 1 — WSL2 (recommended)**
+
+Install WSL2 and enable the WSL2 backend in Docker Desktop Settings → General. Then open a WSL terminal and run all scripts exactly as documented — full compatibility.
+
+```bash
+# Inside WSL terminal, from the repo directory:
+./setup.sh
+./backup.sh
+./restore.sh backup-YYYYMMDD-HHMM.sql
+```
+
+**Option 2 — Git Bash**
+
+Git Bash (bundled with [Git for Windows](https://git-scm.com/)) runs bash scripts and has `docker` on the path if Docker Desktop is installed. Open Git Bash and run the scripts the same way. Note: `source .env` and most Unix utilities work, but behaviour can differ from WSL2 in edge cases.
+
+**Option 3 — PowerShell equivalents (no bash required)**
+
+If you only need backup and restore, you can run the Docker commands directly in PowerShell:
+
+```powershell
+# Backup
+$date = Get-Date -Format "yyyyMMdd-HHmm"
+docker exec lab-data-stack_postgres pg_dumpall -U labuser > "backup-$date.sql"
+
+# Restore (replace filename and container/user as needed)
+Get-Content backup-YYYYMMDD-HHMM.sql | docker exec -i lab-data-stack_postgres psql -U labuser postgres
+```
+
+Replace `lab-data-stack` with your `PROJECT_NAME` and `labuser` with your `POSTGRES_USER` from `.env`.
+
+---
+
 ## Troubleshooting
 
 **Superset 500 error** — `SUPERSET_SECRET_KEY` missing or empty in `.env`. Never change it after first start (invalidates all sessions).
@@ -167,7 +203,7 @@ docker compose ps postgres
 docker compose logs postgres | tail -20
 ```
 
-**Reset everything** (deletes all data):
+**Reset everything** !! deletes all data !!:
 ```bash
 docker compose down -v && docker compose up -d
 ```
