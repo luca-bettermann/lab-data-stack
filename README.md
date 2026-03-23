@@ -46,7 +46,7 @@ docker compose logs -f   # watch startup; Superset takes ~90 s on first boot
 Starting Superset web server on port 8088...
 ```
 
-**NocoDB** — open http://localhost:8080, sign up (first user becomes admin).
+**NocoDB** — open http://localhost:8080, you'll see a Sign Up screen. Enter any email and password you choose — the first user to sign up automatically becomes the admin. These credentials are not in `.env`; save them in your password manager.
 **Superset** — open http://localhost:8088, log in with `SUPERSET_ADMIN_USER` / `SUPERSET_ADMIN_PASSWORD` from `.env`.
 
 ---
