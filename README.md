@@ -78,39 +78,82 @@ docker compose restart superset    # restart one service
 docker compose logs -f superset    # stream logs
 docker compose ps                  # health status
 
-# Backup PostgreSQL
-docker exec lab_postgres pg_dumpall -U labuser > backup-$(date +%Y%m%d-%H%M).sql
-
-# Restore
-cat backup.sql | docker exec -i lab_postgres psql -U labuser
-
 # Update images
 docker compose pull && docker compose up -d
 ```
 
 ---
 
-## Lab Server Deployment
-
-Copy files to server, install Docker, start the stack — only the browser URL changes:
+## Backup & Restore
 
 ```bash
-# On your machine
-scp -r /path/to/lab-data-stack serveruser@192.168.1.50:~/lab-data-stack
+chmod +x backup.sh restore.sh
 
-# On server (Ubuntu/Debian)
+./backup.sh                              # creates backup-YYYYMMDD-HHMM.sql
+./restore.sh backup-20240101-1200.sql   # restores with confirmation prompt
+```
+
+Both scripts load credentials from `.env` automatically. SQL dumps are gitignored — store them externally (cloud storage, external drive, or a secure remote).
+
+**Superset dashboards** are not in PostgreSQL. Export them separately:
+Dashboards → select → **…** → **Export** → saves a `.zip` you can re-import on any instance.
+
+---
+
+## Migrating to a New Server
+
+This workflow requires no local files on the new server — only the repo (public) and the backup dump.
+
+**Before you leave the old server:**
+
+1. Run a final backup and copy the dump to a safe location (e.g. your laptop or cloud storage):
+   ```bash
+   ./backup.sh
+   scp backup-YYYYMMDD-HHMM.sql you@yourlaptop:~/
+   ```
+
+2. Export Superset dashboards via the UI (Dashboards → … → Export) and save the `.zip` alongside the dump.
+
+3. Store your `.env` as a secret GitHub Gist so no credentials need to travel as plain files:
+   - Go to https://gist.github.com → **+** → set to **Secret**
+   - Paste the contents of your `.env`, name the file `.env`, create the gist
+   - Save the gist URL — you'll need it on the new server
+
+**On the new server:**
+
+```bash
+# 1. Install Docker
 curl -fsSL https://get.docker.com | sh
 sudo usermod -aG docker $USER   # log out and back in
-cd ~/lab-data-stack
+
+# 2. Clone the repo
+git clone https://github.com/<you>/lab-data-stack.git
+cd lab-data-stack
+
+# 3. Restore .env from your secret gist
+#    Open the gist URL in a browser, copy the raw content, paste into .env:
+nano .env          # paste and save
+chmod 600 .env
+
+# 4. Start the stack (initialises fresh databases)
 chmod +x setup.sh && ./setup.sh
 
-# Open firewall ports if needed
+# 5. Copy the backup dump to the server and restore
+scp you@yourlaptop:~/backup-YYYYMMDD-HHMM.sql .
+./restore.sh backup-YYYYMMDD-HHMM.sql
+
+# 6. Restart so all services pick up the restored data
+docker compose restart
+
+# 7. Open firewall ports if needed
 sudo ufw allow 8080/tcp && sudo ufw allow 8088/tcp
 ```
 
 Access: `http://<server-ip>:8080` (NocoDB) and `http://<server-ip>:8088` (Superset).
 
-Auto-restart is handled by `restart: unless-stopped` in `docker-compose.yml` + `systemctl enable docker`.
+Re-import your Superset dashboards: Dashboards → **Import** → upload the `.zip`.
+
+Auto-restart on reboot is handled by `restart: unless-stopped` in `docker-compose.yml` combined with `systemctl enable docker`.
 
 ---
 
@@ -148,6 +191,8 @@ docker system df                                     # volume disk usage
 
 ```
 setup.sh                  validates .env exists, then stops + starts the stack
+backup.sh                 dumps all PostgreSQL databases to backup-YYYYMMDD-HHMM.sql
+restore.sh                restores a dump file with confirmation prompt
 docker-compose.yml        main stack definition
 .env.example              template — copy to .env and fill in manually
 .gitignore

@@ -6,6 +6,9 @@
 # NEVER commit this. Use .env.example as the template.
 .env
 
+# SQL backup dumps — store these externally, never in the repo.
+backup-*.sql
+
 # Editor / IDE files
 .DS_Store
 .vscode/
