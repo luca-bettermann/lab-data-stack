@@ -41,7 +41,7 @@ fi
 
 echo "🔄 Restoring from $BACKUP_FILE ..."
 
-cat "$BACKUP_FILE" | docker exec -i lab_postgres psql -U "$POSTGRES_USER" postgres
+cat "$BACKUP_FILE" | docker exec -i "${PROJECT_NAME:-lab-data-stack}_postgres" psql -U "$POSTGRES_USER" postgres
 
 if [ $? -ne 0 ]; then
   echo ""

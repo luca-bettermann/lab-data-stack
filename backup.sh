@@ -14,7 +14,7 @@ FILENAME="backup-$(date +%Y%m%d-%H%M).sql"
 
 echo "📦 Dumping all PostgreSQL databases to $FILENAME ..."
 
-docker exec lab_postgres pg_dumpall -U "$POSTGRES_USER" > "$FILENAME"
+docker exec "${PROJECT_NAME:-lab-data-stack}_postgres" pg_dumpall -U "$POSTGRES_USER" > "$FILENAME"
 
 if [ $? -ne 0 ]; then
   echo ""

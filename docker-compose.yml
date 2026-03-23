@@ -29,7 +29,7 @@ services:
   # ──────────────────────────────────────────────────────────
   postgres:
     image: postgres:15-alpine
-    container_name: lab_postgres
+    container_name: ${PROJECT_NAME:-lab-data-stack}_postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -57,7 +57,7 @@ services:
   # ──────────────────────────────────────────────────────────
   nocodb:
     image: nocodb/nocodb:latest
-    container_name: lab_nocodb
+    container_name: ${PROJECT_NAME:-lab-data-stack}_nocodb
     restart: unless-stopped
     ports:
       - "${NOCODB_PORT:-8080}:8080"
@@ -95,7 +95,7 @@ services:
     build:
       context: .
       dockerfile: superset/Dockerfile
-    container_name: lab_superset
+    container_name: ${PROJECT_NAME:-lab-data-stack}_superset
     restart: unless-stopped
     ports:
       - "${SUPERSET_PORT:-8088}:8088"
@@ -131,11 +131,11 @@ services:
 # ============================================================
 volumes:
   postgres_data:
-    name: lab_postgres_data
+    name: ${PROJECT_NAME:-lab-data-stack}_postgres_data
   nc_data:
-    name: lab_nocodb_data
+    name: ${PROJECT_NAME:-lab-data-stack}_nocodb_data
   superset_home:
-    name: lab_superset_home
+    name: ${PROJECT_NAME:-lab-data-stack}_superset_home
 
 
 # ============================================================
@@ -143,5 +143,5 @@ volumes:
 # ============================================================
 networks:
   lab_network:
-    name: lab_network
+    name: ${PROJECT_NAME:-lab-data-stack}_network
     driver: bridge
