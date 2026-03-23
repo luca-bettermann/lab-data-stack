@@ -1,0 +1,4 @@
+# Force LF line endings for shell scripts on all platforms.
+# Prevents CRLF issues when running .sh files on Linux/WSL/macOS
+# after editing on Windows.
+*.sh text eol=lf
