@@ -203,6 +203,18 @@ docker compose ps postgres
 docker compose logs postgres | tail -20
 ```
 
+**PostgreSQL user not found** — PostgreSQL only creates the user and databases on a completely fresh volume. If a volume already exists from a previous (possibly failed) attempt, init is skipped and the user may be missing. If there is no data to keep, wipe and restart:
+```bash
+docker compose down -v
+./setup.sh
+```
+If data must be preserved, create the user manually:
+```bash
+docker exec -it ${PROJECT_NAME}_postgres psql -U postgres -c "CREATE USER labuser WITH PASSWORD 'your-password';"
+docker exec -it ${PROJECT_NAME}_postgres psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE nocodb TO labuser;"
+docker exec -it ${PROJECT_NAME}_postgres psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE superset TO labuser;"
+```
+
 **Reset everything** !! deletes all data !!:
 ```bash
 docker compose down -v && docker compose up -d
