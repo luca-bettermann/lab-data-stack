@@ -97,6 +97,15 @@ Both scripts load credentials from `.env` automatically. SQL dumps are gitignore
 
 `pg_dumpall` covers all databases including `superset`, so dashboards, charts, and datasets are fully included in the backup.
 
+**Restoring to a different instance:** the following values in `.env` must match the original — copy them across before running `restore.sh`:
+
+| Variable | Why |
+|---|---|
+| `POSTGRES_USER` + `POSTGRES_PASSWORD` | Embedded in the dump as role definitions; NocoDB and Superset use these to connect |
+| `SUPERSET_SECRET_KEY` | Used to encrypt the stored DB connection password; changing it means you must re-enter the connection in Superset after restore |
+
+`PROJECT_NAME`, ports, `NOCODB_JWT_SECRET`, and Superset admin credentials can differ freely.
+
 ---
 
 ## Migrating to a New Server
