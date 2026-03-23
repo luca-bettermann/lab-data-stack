@@ -95,8 +95,7 @@ chmod +x backup.sh restore.sh
 
 Both scripts load credentials from `.env` automatically. SQL dumps are gitignored — store them externally (cloud storage, external drive, or a secure remote).
 
-**Superset dashboards** are not in PostgreSQL. Export them separately:
-Dashboards → select → **…** → **Export** → saves a `.zip` you can re-import on any instance.
+`pg_dumpall` covers all databases including `superset`, so dashboards, charts, and datasets are fully included in the backup.
 
 ---
 
@@ -111,10 +110,9 @@ This workflow requires no local files on the new server — only the repo (publi
    ./backup.sh
    scp backup-YYYYMMDD-HHMM.sql you@yourlaptop:~/
    ```
+   This covers all databases — `nocodb`, `superset` (dashboards, charts, datasets), and any others.
 
-2. Export Superset dashboards via the UI (Dashboards → … → Export) and save the `.zip` alongside the dump.
-
-3. Store your `.env` as a secret GitHub Gist so no credentials need to travel as plain files:
+2. Store your `.env` as a secret GitHub Gist so no credentials need to travel as plain files:
    - Go to https://gist.github.com → **+** → set to **Secret**
    - Paste the contents of your `.env`, name the file `.env`, create the gist
    - Save the gist URL — you'll need it on the new server
