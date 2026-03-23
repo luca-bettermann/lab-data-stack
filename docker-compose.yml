@@ -39,8 +39,6 @@ services:
       - postgres_data:/var/lib/postgresql/data
       # This SQL file runs once on first container start:
       - ./init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
     networks:
       - lab_network
     healthcheck:
