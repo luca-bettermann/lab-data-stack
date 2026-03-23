@@ -145,9 +145,8 @@ chmod 600 .env
 # 4. Copy the backup dump to the server
 scp you@yourlaptop:~/backup-YYYYMMDD-HHMM.sql .
 
-# 5. Start the stack and restore data (restore.sh restarts automatically)
+# 5. Restore data — this starts postgres, restores, then brings up the full stack
 chmod +x setup.sh restore.sh
-./setup.sh
 ./restore.sh backup-YYYYMMDD-HHMM.sql
 ```
 

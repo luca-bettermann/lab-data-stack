@@ -39,20 +39,23 @@ if [ "$CONFIRM" != "YES" ]; then
   exit 1
 fi
 
-echo "🔄 Restoring from $BACKUP_FILE ..."
+echo "🛑 Stopping stack..."
+docker compose down
 
+echo "🐘 Starting PostgreSQL only..."
+docker compose up -d postgres
+
+echo "⏳ Waiting for PostgreSQL to be ready..."
+until docker compose exec -T postgres pg_isready -U "$POSTGRES_USER" -d postgres > /dev/null 2>&1; do
+  sleep 2
+done
+
+echo "🔄 Restoring from $BACKUP_FILE ..."
 cat "$BACKUP_FILE" | docker exec -i "${PROJECT_NAME:-lab-data-stack}_postgres" psql -U "$POSTGRES_USER" postgres
 
-if [ $? -ne 0 ]; then
-  echo ""
-  echo "❌ Restore failed. Check the output above for details."
-  echo ""
-  exit 1
-fi
-
 echo ""
-echo "🔄 Restarting stack..."
-docker compose restart
+echo "🚀 Starting full stack..."
+docker compose up -d
 
 echo ""
 echo "✅ Restore complete."
