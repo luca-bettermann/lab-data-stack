@@ -51,6 +51,9 @@ if [ $? -ne 0 ]; then
 fi
 
 echo ""
-echo "✅ Restore complete. Restart the stack to apply:"
-echo "   docker compose restart"
+echo "🔄 Restarting stack..."
+docker compose restart
+
+echo ""
+echo "✅ Restore complete."
 echo ""

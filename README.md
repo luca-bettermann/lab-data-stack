@@ -145,13 +145,10 @@ chmod 600 .env
 # 4. Copy the backup dump to the server
 scp you@yourlaptop:~/backup-YYYYMMDD-HHMM.sql .
 
-# 5. Start the stack and restore data
+# 5. Start the stack and restore data (restore.sh restarts automatically)
 chmod +x setup.sh restore.sh
 ./setup.sh
 ./restore.sh backup-YYYYMMDD-HHMM.sql
-
-# 6. Restart so all services pick up the restored data
-docker compose restart
 ```
 
 Access: `http://<server-ip>:8080` (NocoDB) and `http://<server-ip>:8088` (Superset).
