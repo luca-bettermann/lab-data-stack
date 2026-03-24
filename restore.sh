@@ -50,6 +50,13 @@ until docker compose exec -T postgres pg_isready -U "$POSTGRES_USER" -d postgres
   sleep 2
 done
 
+SAFETY_BACKUP="pre-restore-backup-$(date +%Y%m%d-%H%M).sql"
+echo "💾 Taking safety backup of current state → $SAFETY_BACKUP ..."
+docker exec "${PROJECT_NAME:-lab-data-stack}_postgres" pg_dumpall -U "$POSTGRES_USER" --clean --if-exists > "$SAFETY_BACKUP"
+echo "   Safety backup complete. If restore goes wrong, recover with:"
+echo "   ./restore.sh $SAFETY_BACKUP"
+echo ""
+
 echo "🔄 Restoring from $BACKUP_FILE ..."
 cat "$BACKUP_FILE" | docker exec -i "${PROJECT_NAME:-lab-data-stack}_postgres" psql -U "$POSTGRES_USER" postgres
 
