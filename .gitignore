@@ -8,6 +8,7 @@
 
 # SQL backup dumps — store these externally, never in the repo.
 backup-*.sql
+pre-restore-backup-*.sql
 
 # Editor / IDE files
 .DS_Store

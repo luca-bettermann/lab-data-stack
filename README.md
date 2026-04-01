@@ -31,11 +31,11 @@ chmod 600 .env
 # Generate secrets: openssl rand -base64 32
 # Adjust ports if running multiple instances
 
-chmod +x setup.sh
-./setup.sh
+chmod +x start.sh
+./start.sh
 ```
 
-`setup.sh` requires `.env` to exist — it will print instructions and exit if it doesn't. Once `.env` is in place, it stops any running containers and starts the stack fresh.
+`start.sh` requires `.env` to exist — it will print instructions and exit if it doesn't. Once `.env` is in place, it stops any running containers and starts the stack fresh.
 
 ```bash
 docker compose logs -f   # watch startup; Superset takes ~90 s on first boot
@@ -146,7 +146,7 @@ chmod 600 .env
 scp you@yourlaptop:~/backup-YYYYMMDD-HHMM.sql .
 
 # 5. Restore data — this starts postgres, restores, then brings up the full stack
-chmod +x setup.sh restore.sh
+chmod +x start.sh restore.sh
 ./restore.sh backup-YYYYMMDD-HHMM.sql
 ```
 
@@ -168,7 +168,7 @@ Install WSL2 and enable the WSL2 backend in Docker Desktop Settings → General.
 
 ```bash
 # Inside WSL terminal, from the repo directory:
-./setup.sh
+./start.sh
 ./backup.sh
 ./restore.sh backup-YYYYMMDD-HHMM.sql
 ```
@@ -194,6 +194,21 @@ Replace `lab-data-stack` with your `PROJECT_NAME` and `labuser` with your `POSTG
 
 ---
 
+## Multi-instance Workflow
+
+When cloning the repo for a new instance, only three values need to change in `.env`:
+
+| Variable | Must be unique | Can be shared |
+|---|---|---|
+| `PROJECT_NAME` | ✅ | |
+| `NOCODB_PORT` | ✅ | |
+| `SUPERSET_PORT` | ✅ | |
+| Everything else | | ✅ |
+
+Copy the `.env` from an existing instance, update those three values, and run `./start.sh`.
+
+---
+
 ## Troubleshooting
 
 **Superset 500 error** — `SUPERSET_SECRET_KEY` missing or empty in `.env`. Never change it after first start (invalidates all sessions).
@@ -212,7 +227,7 @@ docker compose logs postgres | tail -20
 **PostgreSQL user not found** — PostgreSQL only creates the user and databases on a completely fresh volume. If a volume already exists from a previous (possibly failed) attempt, init is skipped and the user may be missing. If there is no data to keep, wipe and restart:
 ```bash
 docker compose down -v
-./setup.sh
+./start.sh
 ```
 If data must be preserved, create the user manually:
 ```bash
@@ -239,7 +254,7 @@ docker system df                                     # volume disk usage
 ## File Structure
 
 ```
-setup.sh                  validates .env exists, then stops + starts the stack
+start.sh                  validates .env exists, then stops + starts the stack
 backup.sh                 dumps all PostgreSQL databases to backup-YYYYMMDD-HHMM.sql
 restore.sh                restores a dump file with confirmation prompt
 docker-compose.yml        main stack definition
