@@ -10,12 +10,13 @@
 #   3. Call main
 #
 # Hooks:
-#   ext_collect_values   — prompt for additional credentials
-#   ext_collect_ports    — prompt for additional ports
-#   ext_show_summary     — print additional credential rows
+#   ext_collect_values     — prompt for additional credentials
+#   ext_collect_ports      — prompt for additional ports
+#   ext_generate_defaults  — auto-generate additional credentials
+#   ext_show_summary       — print additional credential rows
 #   ext_show_summary_ports — print additional port rows
-#   ext_write_env        — emit additional .env sections (stdout)
-#   ext_write_env_ports  — emit additional port lines (stdout)
+#   ext_write_env          — emit additional .env sections (stdout)
+#   ext_write_env_ports    — emit additional port lines (stdout)
 # ============================================================
 
 set -euo pipefail
@@ -28,20 +29,29 @@ source "$BASE_DIR/lib.sh"
 INSTALL_TITLE="${INSTALL_TITLE:-Lab Data Stack}"
 INSTALL_PROJECT_HINT="${INSTALL_PROJECT_HINT:-(e.g. 'calibration', 'robolab-2026')}"
 
-# ─── Collect all values ──────────────────────────────────────
+# ─── Auto-generate all credentials ──────────────────────────
 
-collect_values() {
-  # ── Project name ─────────────────────────────────────────
-  echo ""
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo " Project"
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "  The project name is used for Docker container and"
-  echo "  volume names. Use a short, lowercase identifier"
-  echo "  $INSTALL_PROJECT_HINT"
-  prompt_value "Project name" "" "true"
-  PROJECT_NAME="$_REPLY"
+generate_defaults() {
+  POSTGRES_USER="labuser"
+  POSTGRES_PASSWORD="$(gen_secret)"
 
+  NOCODB_ADMIN_EMAIL="admin@lab.local"
+  NOCODB_ADMIN_PASSWORD="$(gen_secret)"
+  NOCODB_JWT_SECRET="$(gen_secret)"
+
+  SUPERSET_ADMIN_USER="admin"
+  SUPERSET_ADMIN_EMAIL="admin@lab.local"
+  SUPERSET_ADMIN_PASSWORD="$(gen_secret)"
+  SUPERSET_SECRET_KEY="$(gen_secret)"
+
+  if declare -f ext_generate_defaults > /dev/null 2>&1; then
+    ext_generate_defaults
+  fi
+}
+
+# ─── Collect all values (interactive) ────────────────────────
+
+collect_values_interactive() {
   # ── PostgreSQL ───────────────────────────────────────────
   echo ""
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -93,8 +103,43 @@ collect_values() {
   if declare -f ext_collect_values > /dev/null 2>&1; then
     ext_collect_values
   fi
+}
 
-  # ── Ports ────────────────────────────────────────────────
+# ─── Collect values (main entry point) ───────────────────────
+
+collect_values() {
+  # ── Project name (always prompted) ───────────────────────
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo " Project"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "  The project name is used for Docker container and"
+  echo "  volume names. Use a short, lowercase identifier"
+  echo "  $INSTALL_PROJECT_HINT"
+  prompt_value "Project name" "" "true"
+  PROJECT_NAME="$_REPLY"
+
+  # ── Auto-generate or prompt for credentials ──────────────
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo " Credentials"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "  All credentials are internal to the Docker stack"
+  echo "  and only stored in .env — you don't need to"
+  echo "  remember them."
+  echo ""
+  printf "  Auto-generate all credentials? [Y/n] "
+  read -r _auto
+  _auto="$(printf '%s' "$_auto" | tr '[:upper:]' '[:lower:]')"
+
+  if [[ "$_auto" == "n" || "$_auto" == "no" ]]; then
+    collect_values_interactive
+  else
+    printf "\n  ${DIM}Generating secure credentials...${NC}\n"
+    generate_defaults
+  fi
+
+  # ── Ports (always prompted) ──────────────────────────────
   echo ""
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo " Ports"
