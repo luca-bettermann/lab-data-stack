@@ -4,8 +4,10 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/lib.sh"
 
 require_env "Copy the template: cp .env.example .env"
+check_dependencies
 
 source .env
+require_env_vars POSTGRES_USER POSTGRES_PASSWORD PROJECT_NAME
 
 echo "Stopping and removing existing containers..."
 docker compose down

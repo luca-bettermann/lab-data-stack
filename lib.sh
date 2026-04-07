@@ -35,6 +35,28 @@ require_env() {
   fi
 }
 
+# require_env_vars VAR1 VAR2 ...
+# Exits if any of the listed variables are unset or empty.
+require_env_vars() {
+  local missing=()
+  for var in "$@"; do
+    if [ -z "${!var:-}" ]; then
+      missing+=("$var")
+    fi
+  done
+  if [ ${#missing[@]} -gt 0 ]; then
+    echo ""
+    printf "  ${RED}Missing required env vars:${NC}\n"
+    for var in "${missing[@]}"; do
+      echo "    - $var"
+    done
+    echo ""
+    echo "  Check your .env file or re-run ./install.sh"
+    echo ""
+    exit 1
+  fi
+}
+
 # ─── Secret generation ──────────────────────────────────────
 
 gen_secret() {

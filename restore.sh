@@ -3,6 +3,8 @@
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/lib.sh"
 
+check_dependencies
+
 if [ -z "$1" ]; then
   echo ""
   echo "No backup file specified."
@@ -55,6 +57,7 @@ else
 fi
 
 source .env
+require_env_vars POSTGRES_USER POSTGRES_PASSWORD PROJECT_NAME
 
 echo ""
 echo "WARNING: This will overwrite ALL existing data in the database."
