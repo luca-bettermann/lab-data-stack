@@ -6,9 +6,9 @@
 # NEVER commit this. Use .env.example as the template.
 .env
 
-# SQL backup dumps — store these externally, never in the repo.
-backup-*.sql
-pre-restore-backup-*.sql
+# Backup zips (contain SQL dump + .env credentials) — store externally, never in the repo.
+backup-*.zip
+pre-restore-backup-*.zip
 
 # Editor / IDE files
 .DS_Store

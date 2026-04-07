@@ -1,17 +1,9 @@
 #!/bin/bash
 
-if [ ! -f .env ]; then
-  echo ""
-  echo "❌ No .env file found."
-  echo "   Run this script from the lab-data-stack directory where .env lives."
-  echo ""
-  exit 1
-fi
-
 if [ -z "$1" ]; then
   echo ""
   echo "❌ No backup file specified."
-  echo "   Usage: ./restore.sh backup-20240101-1200.sql"
+  echo "   Usage: ./restore.sh backup-20240101-1200.zip"
   echo ""
   exit 1
 fi
@@ -25,17 +17,55 @@ if [ ! -f "$BACKUP_FILE" ]; then
   exit 1
 fi
 
+# Unzip the backup — extracts the .sql dump and .env credentials
+WORK_DIR="$(mktemp -d)"
+echo ""
+echo "📂 Extracting $BACKUP_FILE ..."
+unzip -q "$BACKUP_FILE" -d "$WORK_DIR"
+
+SQL_FILE="$(ls "$WORK_DIR"/*.sql 2>/dev/null | head -1)"
+ENV_FILE="$(ls "$WORK_DIR"/.env 2>/dev/null | head -1)"
+
+if [ -z "$SQL_FILE" ]; then
+  echo "❌ No .sql file found inside $BACKUP_FILE"
+  rm -rf "$WORK_DIR"
+  exit 1
+fi
+
+if [ -n "$ENV_FILE" ]; then
+  echo "🔑 Restoring credentials from backup — POSTGRES_PASSWORD and SUPERSET_SECRET_KEY will match the dump."
+  cp "$ENV_FILE" .env
+else
+  echo "⚠️  No .env found inside the zip (older backup format)."
+  if [ ! -f .env ]; then
+    echo "❌ No .env present either. Cannot proceed without credentials."
+    rm -rf "$WORK_DIR"
+    exit 1
+  fi
+  echo "   Falling back to existing .env — make sure POSTGRES_PASSWORD and SUPERSET_SECRET_KEY"
+  echo "   match the values active when this backup was created."
+  echo ""
+  read -p "   Continue? [y/N] " CONFIRM_ENV
+  if [[ "$CONFIRM_ENV" != "y" && "$CONFIRM_ENV" != "Y" ]]; then
+    echo "Aborted."
+    rm -rf "$WORK_DIR"
+    exit 1
+  fi
+fi
+
 source .env
 
 echo ""
 echo "⚠️  WARNING: This will overwrite ALL existing data in the database."
-echo "   Backup file: $BACKUP_FILE"
+echo "   Backup file : $BACKUP_FILE"
+echo "   SQL dump    : $(basename "$SQL_FILE")"
 echo ""
 read -p "   Type YES to confirm: " CONFIRM
 echo ""
 
 if [ "$CONFIRM" != "YES" ]; then
   echo "Aborted."
+  rm -rf "$WORK_DIR"
   exit 1
 fi
 
@@ -50,15 +80,19 @@ until docker compose exec -T postgres pg_isready -U "$POSTGRES_USER" -d postgres
   sleep 2
 done
 
-SAFETY_BACKUP="pre-restore-backup-$(date +%Y%m%d-%H%M).sql"
-echo "💾 Taking safety backup of current state → $SAFETY_BACKUP ..."
-docker exec "${PROJECT_NAME:-lab-data-stack}_postgres" pg_dumpall -U "$POSTGRES_USER" --clean --if-exists > "$SAFETY_BACKUP"
-echo "   Safety backup complete. If restore goes wrong, recover with:"
-echo "   ./restore.sh $SAFETY_BACKUP"
+SAFETY_TIMESTAMP="$(date +%Y%m%d-%H%M)"
+SAFETY_SQL="pre-restore-backup-${SAFETY_TIMESTAMP}.sql"
+SAFETY_ZIP="pre-restore-backup-${SAFETY_TIMESTAMP}.zip"
+echo "💾 Taking safety backup of current state → $SAFETY_ZIP ..."
+docker exec "${PROJECT_NAME:-lab-data-stack}_postgres" pg_dumpall -U "$POSTGRES_USER" --clean --if-exists > "$SAFETY_SQL"
+zip -j "$SAFETY_ZIP" "$SAFETY_SQL" .env && rm -f "$SAFETY_SQL"
+echo "   If restore goes wrong, recover with: ./restore.sh $SAFETY_ZIP"
 echo ""
 
-echo "🔄 Restoring from $BACKUP_FILE ..."
-cat "$BACKUP_FILE" | docker exec -i "${PROJECT_NAME:-lab-data-stack}_postgres" psql -U "$POSTGRES_USER" postgres
+echo "🔄 Restoring from $(basename "$SQL_FILE") ..."
+cat "$SQL_FILE" | docker exec -i "${PROJECT_NAME:-lab-data-stack}_postgres" psql -U "$POSTGRES_USER" postgres
+
+rm -rf "$WORK_DIR"
 
 echo ""
 echo "🚀 Starting full stack..."

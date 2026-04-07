@@ -10,24 +10,31 @@ fi
 
 source .env
 
-FILENAME="backup-$(date +%Y%m%d-%H%M).sql"
+TIMESTAMP="$(date +%Y%m%d-%H%M)"
+SQL_FILE="backup-${TIMESTAMP}.sql"
+ZIP_FILE="backup-${TIMESTAMP}.zip"
 
-echo "📦 Dumping all PostgreSQL databases to $FILENAME ..."
+echo "📦 Dumping all PostgreSQL databases to $SQL_FILE ..."
 
-docker exec "${PROJECT_NAME:-lab-data-stack}_postgres" pg_dumpall -U "$POSTGRES_USER" --clean --if-exists > "$FILENAME"
+docker exec "${PROJECT_NAME:-lab-data-stack}_postgres" pg_dumpall -U "$POSTGRES_USER" --clean --if-exists > "$SQL_FILE"
 
 if [ $? -ne 0 ]; then
   echo ""
   echo "❌ Backup failed. Is the stack running? Try: docker compose ps"
   echo ""
-  rm -f "$FILENAME"
+  rm -f "$SQL_FILE"
   exit 1
 fi
 
-SIZE=$(du -sh "$FILENAME" | cut -f1)
+echo "🗜️  Zipping dump + credentials into $ZIP_FILE ..."
+zip -j "$ZIP_FILE" "$SQL_FILE" .env
+rm -f "$SQL_FILE"
+
+SIZE=$(du -sh "$ZIP_FILE" | cut -f1)
 
 echo ""
-echo "✅ Backup complete: $FILENAME ($SIZE)"
+echo "✅ Backup complete: $ZIP_FILE ($SIZE)"
+echo "   Contains: $SQL_FILE + .env (credentials)"
 echo ""
 echo "⚠️  Store this file somewhere safe — it is NOT backed up by git."
 echo "   Options: external drive, cloud storage, or a secure remote server."
