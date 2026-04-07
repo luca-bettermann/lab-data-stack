@@ -21,7 +21,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="${SCRIPT_DIR:-$(cd "$(dirname "$0")" && pwd)}"
-source "$SCRIPT_DIR/lib.sh"
+BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$BASE_DIR/lib.sh"
 
 # ─── Configurable labels (wrappers can override before sourcing) ─
 INSTALL_TITLE="${INSTALL_TITLE:-Lab Data Stack}"
