@@ -341,7 +341,7 @@ main() {
     read -r _choice
     echo ""
 
-    case "${_choice,,}" in
+    case "$(printf '%s' "$_choice" | tr '[:upper:]' '[:lower:]')" in
       ""| y | yes)
         write_env
         echo ""
