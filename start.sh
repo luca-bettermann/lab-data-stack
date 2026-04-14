@@ -12,6 +12,9 @@ require_env_vars POSTGRES_USER POSTGRES_PASSWORD PROJECT_NAME
 echo "Stopping and removing existing containers..."
 docker compose down
 
+echo "Pulling latest images..."
+docker compose pull
+
 echo "Starting stack..."
 docker compose up -d
 
