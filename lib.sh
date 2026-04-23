@@ -206,6 +206,25 @@ pg_backup_dump() {
   docker exec "${project}_postgres" pg_dumpall -U "$user" --clean --if-exists > "$output"
 }
 
+# pg_backup_dump_no_data PROJECT_NAME POSTGRES_USER OUTPUT_FILE
+# Dumps everything needed to rebuild structure and dashboards but
+# skips row data in NocoDB user tables (pattern nc_*___*).
+# Keeps: globals, full Superset DB, NocoDB schemas + NocoDB's own
+# metadata tables (nc_projects, nc_models, nc_views, …).
+pg_backup_dump_no_data() {
+  local project="${1:-lab-data-stack}"
+  local user="$2"
+  local output="$3"
+  local container="${project}_postgres"
+
+  {
+    docker exec "$container" pg_dumpall -U "$user" --globals-only --clean --if-exists
+    docker exec "$container" pg_dump -U "$user" -d superset --create --clean --if-exists
+    docker exec "$container" pg_dump -U "$user" -d nocodb --create --clean --if-exists \
+      --exclude-table-data='nc_*___*'
+  } > "$output"
+}
+
 # pg_restore_dump PROJECT_NAME POSTGRES_USER INPUT_FILE
 # Pipes a SQL dump into the postgres container.
 pg_restore_dump() {
