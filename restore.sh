@@ -5,15 +5,49 @@ source "$SCRIPT_DIR/lib.sh"
 
 check_dependencies
 
-if [ -z "$1" ]; then
+NEW_PROJECT_NAME=""
+BACKUP_FILE=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --project)
+      NEW_PROJECT_NAME="$2"
+      shift 2
+      ;;
+    -h|--help)
+      echo "Usage: ./restore.sh backup-YYYYMMDD-HHMM.zip [--project NEW_NAME]"
+      echo ""
+      echo "  --project NEW_NAME   Override PROJECT_NAME from the backup's .env."
+      echo "                       Useful when seeding a new stack from a no-data dump."
+      echo "                       Skips the safety backup of the current state."
+      exit 0
+      ;;
+    *)
+      if [ -z "$BACKUP_FILE" ]; then
+        BACKUP_FILE="$1"
+        shift
+      else
+        echo "Unexpected argument: $1"
+        exit 1
+      fi
+      ;;
+  esac
+done
+
+if [ -z "$BACKUP_FILE" ]; then
   echo ""
   echo "No backup file specified."
-  echo "  Usage: ./restore.sh backup-20240101-1200.zip"
+  echo "  Usage: ./restore.sh backup-20240101-1200.zip [--project NEW_NAME]"
   echo ""
   exit 1
 fi
 
-BACKUP_FILE="$1"
+if [ -n "$NEW_PROJECT_NAME" ] && ! [[ "$NEW_PROJECT_NAME" =~ ^[a-z0-9][a-z0-9_-]*$ ]]; then
+  echo ""
+  echo "Invalid --project name: $NEW_PROJECT_NAME"
+  echo "  Must match: lowercase letters, digits, '-' or '_'."
+  echo ""
+  exit 1
+fi
 
 if [ ! -f "$BACKUP_FILE" ]; then
   echo ""
@@ -39,6 +73,10 @@ fi
 if [ -n "$ENV_FILE" ]; then
   echo "Restoring credentials from backup."
   cp "$ENV_FILE" .env
+  if [ -n "$NEW_PROJECT_NAME" ]; then
+    sed -i.bak "s|^PROJECT_NAME=.*|PROJECT_NAME=$NEW_PROJECT_NAME|" .env && rm -f .env.bak
+    echo "  Project name overridden: $NEW_PROJECT_NAME"
+  fi
 else
   echo "No .env found inside the zip (older backup format)."
   if [ ! -f .env ]; then
@@ -84,14 +122,19 @@ until docker compose exec -T postgres pg_isready -U "$POSTGRES_USER" -d postgres
   sleep 2
 done
 
-SAFETY_TIMESTAMP="$(date +%Y%m%d-%H%M)"
-SAFETY_SQL="pre-restore-backup-${SAFETY_TIMESTAMP}.sql"
-SAFETY_ZIP="pre-restore-backup-${SAFETY_TIMESTAMP}.zip"
-echo "Taking safety backup of current state -> $SAFETY_ZIP ..."
-pg_backup_dump "${PROJECT_NAME:-lab-data-stack}" "$POSTGRES_USER" "$SAFETY_SQL"
-zip -j "$SAFETY_ZIP" "$SAFETY_SQL" .env && rm -f "$SAFETY_SQL"
-echo "  If restore goes wrong, recover with: ./restore.sh $SAFETY_ZIP"
-echo ""
+if [ -n "$NEW_PROJECT_NAME" ]; then
+  echo "Skipping safety backup (--project sets a new name)."
+  echo ""
+else
+  SAFETY_TIMESTAMP="$(date +%Y%m%d-%H%M)"
+  SAFETY_SQL="pre-restore-backup-${SAFETY_TIMESTAMP}.sql"
+  SAFETY_ZIP="pre-restore-backup-${SAFETY_TIMESTAMP}.zip"
+  echo "Taking safety backup of current state -> $SAFETY_ZIP ..."
+  pg_backup_dump "${PROJECT_NAME:-lab-data-stack}" "$POSTGRES_USER" "$SAFETY_SQL"
+  zip -j "$SAFETY_ZIP" "$SAFETY_SQL" .env && rm -f "$SAFETY_SQL"
+  echo "  If restore goes wrong, recover with: ./restore.sh $SAFETY_ZIP"
+  echo ""
+fi
 
 echo "Restoring from $(basename "$SQL_FILE") ..."
 pg_restore_dump "${PROJECT_NAME:-lab-data-stack}" "$POSTGRES_USER" "$SQL_FILE"
