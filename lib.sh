@@ -207,10 +207,14 @@ pg_backup_dump() {
 }
 
 # pg_backup_dump_no_data PROJECT_NAME POSTGRES_USER OUTPUT_FILE
-# Dumps everything needed to rebuild structure and dashboards but
-# skips row data in NocoDB user tables (pattern nc_*___*).
-# Keeps: globals, full Superset DB, NocoDB schemas + NocoDB's own
-# metadata tables (nc_projects, nc_models, nc_views, …).
+# Dumps everything needed to rebuild structure and dashboards, but no
+# user row data and no NocoDB activity logs.
+# Keeps: globals, full Superset DB (dashboards), NocoDB structure for
+# every schema + NocoDB's own configuration metadata in `public`
+# (models, views, columns, users, …).
+# Drops: data in per-base hash-named schemas (NocoDB user tables) and
+# data in NocoDB log tables (audit, hook logs, jobs, sync logs,
+# automation executions).
 pg_backup_dump_no_data() {
   local project="${1:-lab-data-stack}"
   local user="$2"
@@ -220,8 +224,13 @@ pg_backup_dump_no_data() {
   {
     docker exec "$container" pg_dumpall -U "$user" --globals-only --clean --if-exists
     docker exec "$container" pg_dump -U "$user" -d superset --create --clean --if-exists
-    docker exec "$container" pg_dump -U "$user" -d nocodb --create --clean --if-exists \
-      --exclude-table-data='nc_*___*'
+    docker exec "$container" pg_dump -U "$user" -d nocodb --create --clean --if-exists --schema-only
+    docker exec "$container" pg_dump -U "$user" -d nocodb --data-only -n public \
+      --exclude-table-data='nc_audit_v2' \
+      --exclude-table-data='nc_hook_logs_v2' \
+      --exclude-table-data='nc_jobs' \
+      --exclude-table-data='nc_sync_logs_v2' \
+      --exclude-table-data='nc_automation_executions'
   } > "$output"
 }
 
