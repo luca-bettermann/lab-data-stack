@@ -114,6 +114,9 @@ fi
 echo "Stopping stack..."
 docker compose down
 
+echo "Pulling latest images..."
+docker compose pull
+
 echo "Starting PostgreSQL only..."
 docker compose up -d postgres
 
